@@ -2,7 +2,9 @@ package com.family.tracker.parent
 import android.app.*
 import android.content.*
 import android.graphics.PixelFormat
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
@@ -22,9 +24,10 @@ class FloatingMapService : Service() {
     private var marker: Marker? = null
     private var accuracyCircle: Polygon? = null
     private var statusMini: TextView? = null
-    private val handler = android.os.Handler(mainLooper)
+    private var handler: Handler? = null // FIX: pas init dans <init>
+
     private fun updateMap(lat: Double, lon: Double, acc: Float) {
-        handler.post {
+        handler?.post {
             try {
                 val pos = GeoPoint(lat, lon)
                 marker?.position = pos
@@ -56,12 +59,12 @@ class FloatingMapService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onCreate() {
         super.onCreate()
+        handler = Handler(Looper.getMainLooper()) // FIX ici
         val ch = NotificationChannel("floating_map","Carte Flottante", NotificationManager.IMPORTANCE_LOW)
         getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
         Configuration.getInstance().apply { userAgentValue = "TrackerParent/1.0"; osmdroidBasePath = File(cacheDir, "osmdroid"); osmdroidTileCache = File(cacheDir, "osmdroid/tiles") }
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Si on recoit un intent avec lat/lon directement depuis DataSmsReceiver
         if (intent?.action == "TRACKER_UPDATE" && intent.hasExtra("lat")) {
             val lat = intent.getDoubleExtra("lat", 0.0)
             val lon = intent.getDoubleExtra("lon", 0.0)
@@ -72,7 +75,6 @@ class FloatingMapService : Service() {
         startForeground(2, notif)
         if (floatingView == null) createFloatingWindow()
         try { registerReceiver(receiver, IntentFilter("TRACKER_UPDATE"), RECEIVER_NOT_EXPORTED) } catch(_:Exception){ try { registerReceiver(receiver, IntentFilter("TRACKER_UPDATE")) } catch(_:Exception){} }
-        // Charge derniere position connue
         val prefs = getSharedPreferences("tracker_parent", Context.MODE_PRIVATE)
         val lastLat = prefs.getString("last_lat","")?.toDoubleOrNull()
         val lastLon = prefs.getString("last_lon","")?.toDoubleOrNull()
