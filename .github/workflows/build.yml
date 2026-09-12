@@ -12,7 +12,7 @@ jobs:
         with: { gradle-version: 8.6 }
       - run: chmod +x gradlew
       - run: gradle wrapper --gradle-version 8.6
-      - run: ./gradlew :app-child:assembleDebug :app-parent:assembleDebug --stacktrace
+      - run: ./gradlew clean :app-child:assembleDebug :app-parent:assembleDebug --no-daemon --stacktrace
       - uses: actions/upload-artifact@v4
         with:
           name: apks-debug
