@@ -50,12 +50,11 @@ class FloatingMapService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notif = Notification.Builder(this, "floating_map")
-            .setContentTitle("Carte flottante active")
-            .setContentText("Glisse pour déplacer - X pour fermer")
+            .setContentTitle("Mini-carte active")
+            .setContentText("Glisse pour déplacer")
             .setSmallIcon(android.R.drawable.ic_dialog_map)
             .setOngoing(true).build()
         startForeground(2, notif)
-
         if (floatingView == null) createFloatingWindow()
         try { registerReceiver(receiver, IntentFilter("TRACKER_UPDATE"), RECEIVER_NOT_EXPORTED) } catch(_:Exception){}
         return START_STICKY
@@ -73,21 +72,20 @@ class FloatingMapService : Service() {
         marker = Marker(mapView).apply { position = GeoPoint(47.4736, -0.5517); title = "Enfant" }
         mapView!!.overlays.add(marker)
 
-        val btnClose = floatingView!!.findViewById<ImageView>(R.id.btnClose)
-        val btnExpand = floatingView!!.findViewById<ImageView>(R.id.btnExpand)
-        btnClose.setOnClickListener { stopSelf() }
-        btnExpand.setOnClickListener {
+        floatingView!!.findViewById<ImageView>(R.id.btnClose).setOnClickListener { stopSelf() }
+        floatingView!!.findViewById<ImageView>(R.id.btnExpand).setOnClickListener {
             startActivity(Intent(this, MapActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
 
+        // TAILLE MINI : 380 x 380 dp -> petite bulle carrée arrondie
         val params = WindowManager.LayoutParams(
-            600, 800,
+            380, 380,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = 50; params.y = 200
+        params.x = 20; params.y = 150
 
         var initialX = 0; var initialY = 0; var initialTouchX = 0f; var initialTouchY = 0f
         floatingView!!.findViewById<View>(R.id.dragHandle).setOnTouchListener { _, event ->
