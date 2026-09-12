@@ -1,9 +1,6 @@
 package com.family.tracker.parent
 import android.app.*
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.graphics.PixelFormat
 import android.os.IBinder
 import android.view.*
@@ -25,12 +22,9 @@ class FloatingMapService : Service() {
     private var marker: Marker? = null
     private var accuracyCircle: Polygon? = null
     private var statusMini: TextView? = null
-    private val receiver = object : BroadcastReceiver() {
-        override fun onReceive(c: Context?, intent: Intent?) {
-            val lat = intent?.getDoubleExtra("lat", 0.0) ?: return
-            val lon = intent?.getDoubleExtra("lon", 0.0) ?: return
-            val acc = intent?.getFloatExtra("acc", 10f) ?: 10f
-            if (lat==0.0) return
+    private val handler = android.os.Handler(mainLooper)
+    private fun updateMap(lat: Double, lon: Double, acc: Float) {
+        handler.post {
             try {
                 val pos = GeoPoint(lat, lon)
                 marker?.position = pos
@@ -45,9 +39,18 @@ class FloatingMapService : Service() {
                     mv.controller.animateTo(pos)
                     mv.invalidate()
                 }
-                val sdf = SimpleDateFormat("HH:mm", Locale.FRANCE)
+                val sdf = SimpleDateFormat("HH:mm:ss", Locale.FRANCE)
                 statusMini?.text = "±${acc.toInt()}m ${sdf.format(Date())}"
             } catch(_:Exception){}
+        }
+    }
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(c: Context?, intent: Intent?) {
+            val lat = intent?.getDoubleExtra("lat", 0.0) ?: return
+            val lon = intent?.getDoubleExtra("lon", 0.0) ?: return
+            val acc = intent?.getFloatExtra("acc", 10f) ?: 10f
+            if (lat==0.0) return
+            updateMap(lat, lon, acc)
         }
     }
     override fun onBind(intent: Intent?): IBinder? = null
@@ -58,10 +61,23 @@ class FloatingMapService : Service() {
         Configuration.getInstance().apply { userAgentValue = "TrackerParent/1.0"; osmdroidBasePath = File(cacheDir, "osmdroid"); osmdroidTileCache = File(cacheDir, "osmdroid/tiles") }
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notif = Notification.Builder(this, "floating_map").setContentTitle("Mini-carte 1min - Haute précision").setSmallIcon(android.R.drawable.ic_dialog_map).setOngoing(true).build()
+        // Si on recoit un intent avec lat/lon directement depuis DataSmsReceiver
+        if (intent?.action == "TRACKER_UPDATE" && intent.hasExtra("lat")) {
+            val lat = intent.getDoubleExtra("lat", 0.0)
+            val lon = intent.getDoubleExtra("lon", 0.0)
+            val acc = intent.getFloatExtra("acc", 10f)
+            if (lat!=0.0) updateMap(lat, lon, acc)
+        }
+        val notif = Notification.Builder(this, "floating_map").setContentTitle("Mini-carte 1min").setSmallIcon(android.R.drawable.ic_dialog_map).setOngoing(true).build()
         startForeground(2, notif)
         if (floatingView == null) createFloatingWindow()
-        try { registerReceiver(receiver, IntentFilter("TRACKER_UPDATE"), RECEIVER_NOT_EXPORTED) } catch(_:Exception){}
+        try { registerReceiver(receiver, IntentFilter("TRACKER_UPDATE"), RECEIVER_NOT_EXPORTED) } catch(_:Exception){ try { registerReceiver(receiver, IntentFilter("TRACKER_UPDATE")) } catch(_:Exception){} }
+        // Charge derniere position connue
+        val prefs = getSharedPreferences("tracker_parent", Context.MODE_PRIVATE)
+        val lastLat = prefs.getString("last_lat","")?.toDoubleOrNull()
+        val lastLon = prefs.getString("last_lon","")?.toDoubleOrNull()
+        val lastAcc = prefs.getFloat("last_acc", 10f)
+        if (lastLat!=null && lastLon!=null) updateMap(lastLat, lastLon, lastAcc)
         return START_STICKY
     }
     private fun createFloatingWindow() {
