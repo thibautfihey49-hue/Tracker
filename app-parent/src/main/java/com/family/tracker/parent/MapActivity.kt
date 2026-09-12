@@ -18,27 +18,40 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polygon
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 class MapActivity : AppCompatActivity() {
     private lateinit var map: MapView
     private var marker: Marker? = null
+    private var accuracyCircle: Polygon? = null
     private lateinit var statusText: TextView
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val lat = intent?.getDoubleExtra("lat", 0.0) ?: return
             val lon = intent?.getDoubleExtra("lon", 0.0) ?: return
+            val acc = intent?.getFloatExtra("acc", 10f) ?: 10f
             if (lat==0.0 && lon==0.0) return
             runOnUiThread {
                 val pos = GeoPoint(lat, lon)
                 marker?.position = pos
+                // cercle de precision comme Google Maps
+                accuracyCircle?.let { map.overlays.remove(it) }
+                accuracyCircle = Polygon().apply {
+                    points = Polygon.pointsAsCircle(pos, acc.toDouble())
+                    fillColor = 0x2200B0FF
+                    strokeColor = 0x4400B0FF.toInt()
+                    strokeWidth = 2f
+                }
+                map.overlays.add(accuracyCircle)
+                // remet marker au dessus
+                marker?.let { map.overlays.remove(it); map.overlays.add(it) }
                 map.controller.animateTo(pos)
-                map.controller.setZoom(17.0)
+                map.controller.setZoom(18.0) // zoom Google Maps
                 map.invalidate()
                 val sdf = SimpleDateFormat("HH:mm:ss", Locale.FRANCE)
-                statusText.text = "✅ Recu: $lat, $lon - ${sdf.format(Date())}"
-                Toast.makeText(this@MapActivity, "Position recue!", Toast.LENGTH_SHORT).show()
+                statusText.text = "📍 ${String.format("%.6f", lat)}, ${String.format("%.6f", lon)} ±${acc.toInt()}m - ${sdf.format(Date())} (1 min)"
             }
         }
     }
@@ -56,18 +69,17 @@ class MapActivity : AppCompatActivity() {
         statusText = findViewById(R.id.status)
         map.setTileSource(TileSourceFactory.MAPNIK)
         map.setMultiTouchControls(true)
-        map.controller.setZoom(15.0)
+        map.isTilesScaledToDpi = true
+        map.controller.setZoom(17.0)
         map.controller.setCenter(GeoPoint(47.4736, -0.5517))
-        marker = Marker(map).apply { position = GeoPoint(47.4736, -0.5517); title = "Enfant" }
+        marker = Marker(map).apply { position = GeoPoint(47.4736, -0.5517); title = "Enfant"; setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM) }
         map.overlays.add(marker)
-        statusText.text = "En attente SMS TRACKER:... - Autorise SMS"
+        statusText.text = "En attente - précision Google Maps - 1 min"
         findViewById<FloatingActionButton>(R.id.fabFloat).setOnClickListener {
             if (!Settings.canDrawOverlays(this)) {
-                Toast.makeText(this, "Autorise Afficher par-dessus", Toast.LENGTH_LONG).show()
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
             } else {
                 startForegroundService(Intent(this, FloatingMapService::class.java))
-                Toast.makeText(this, "Mini-carte activee", Toast.LENGTH_LONG).show()
             }
         }
     }
