@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:padding="24dp"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+    <TextView android:text="Partage de position - Consentement" android:textSize="20sp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    <EditText android:id="@+id/inputParent" android:hint="+33XXXXXXXXX" android:inputType="phone" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"/>
+    <CheckBox android:id="@+id/checkConsent" android:text="Je consens à partager ma position" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"/>
+    <Button android:id="@+id/btnActivate" android:text="ACTIVER" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp"/>
+    <TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"/>
+</LinearLayout>
