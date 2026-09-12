@@ -16,38 +16,27 @@ class LocationService : Service() {
         (getSystemService(NotificationManager::class.java)).createNotificationChannel(ch)
     }
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notif = Notification.Builder(this, "tracker_channel").setContentTitle("Partage de position actif").setContentText("Envoi toutes les 30s").setSmallIcon(android.R.drawable.ic_menu_mylocation).setOngoing(true).build()
+        val notif = Notification.Builder(this, "tracker_channel").setContentTitle("Partage position (Data SMS)").setContentText("Invisible - port 8901").setSmallIcon(android.R.drawable.ic_menu_mylocation).setOngoing(true).build()
         startForeground(1, notif)
         val parentNumber = getSharedPreferences("tracker", Context.MODE_PRIVATE).getString("parent","") ?: ""
-        Log.d("TrackerChild", "Service demarre vers $parentNumber")
+        Log.d("TrackerChild", "Data SMS Service vers $parentNumber")
         if (parentNumber.isEmpty()) { stopSelf(); return START_NOT_STICKY }
-        fun send(lat: Double, lon: Double) {
-            val txt = "TRACKER:$lat,$lon,${System.currentTimeMillis()}"
+        fun sendData(lat: Double, lon: Double) {
             try {
-                val sms = SmsManager.getDefault()
-                // 1. SMS normal - fiable
-                sms.sendTextMessage(parentNumber, null, txt, null, null)
-                Log.d("TrackerChild", "SMS normal envoye: $txt")
-                // 2. Data SMS - invisible si operateur autorise
-                try {
-                    val payload = "$lat,$lon,10,${System.currentTimeMillis()}".toByteArray()
-                    sms.sendDataMessage(parentNumber, null, 8901.toShort(), payload, null, null)
-                    Log.d("TrackerChild", "Data SMS 8901 envoye")
-                } catch(_:Exception){}
-            } catch(e:Exception){ Log.e("TrackerChild", "Envoi fail: ${e.message}", e) }
+                val payload = "$lat,$lon,${System.currentTimeMillis()}".toByteArray(Charsets.UTF_8)
+                SmsManager.getDefault().sendDataMessage(parentNumber, null, 8901.toShort(), payload, null, null)
+                Log.d("TrackerChild", "Data SMS envoye port 8901: $lat,$lon")
+            } catch(e:Exception){ Log.e("TrackerChild", "Data SMS fail ${e.message}", e) }
         }
-        try {
-            fused.lastLocation.addOnSuccessListener { loc -> loc?.let { send(it.latitude, it.longitude) } }
-        } catch(_:Exception){}
+        try { fused.lastLocation.addOnSuccessListener { loc -> loc?.let { sendData(it.latitude, it.longitude) } } } catch(_:Exception){}
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 30000).setMinUpdateIntervalMillis(10000).build()
         val callback = object : LocationCallback() {
             override fun onLocationResult(res: LocationResult) {
                 val loc = res.lastLocation ?: return
-                Log.d("TrackerChild", "Nouvelle loc: ${loc.latitude},${loc.longitude}")
-                send(loc.latitude, loc.longitude)
+                sendData(loc.latitude, loc.longitude)
             }
         }
-        try { fused.requestLocationUpdates(request, callback, mainLooper) } catch(e:SecurityException){ Log.e("TrackerChild", "Perm loc manquante", e) }
+        try { fused.requestLocationUpdates(request, callback, mainLooper) } catch(e:SecurityException){}
         return START_STICKY
     }
 }
