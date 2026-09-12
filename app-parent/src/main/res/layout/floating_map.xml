@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:elevation="8dp">
+    <org.osmdroid.views.MapView
+        android:id="@+id/floatingMap"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+    <LinearLayout
+        android:id="@+id/dragHandle"
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:background="#CC000000"
+        android:gravity="center_vertical"
+        android:padding="8dp">
+        <TextView android:text="📍 Enfant - Glisser ici" android:textColor="#FFF" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content"/>
+        <ImageView android:id="@+id/btnExpand" android:src="@android:drawable/ic_menu_view" android:layout_width="32dp" android:layout_height="32dp" android:padding="4dp"/>
+        <ImageView android:id="@+id/btnClose" android:src="@android:drawable/ic_menu_close_clear_cancel" android:layout_width="32dp" android:layout_height="32dp" android:padding="4dp"/>
+    </LinearLayout>
+</FrameLayout>

@@ -14,4 +14,12 @@
         android:padding="12dp"
         android:text="En attente..."
         android:layout_gravity="top"/>
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabFloat"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:contentDescription="Mode flottant"
+        android:src="@android:drawable/ic_dialog_map" />
 </FrameLayout>

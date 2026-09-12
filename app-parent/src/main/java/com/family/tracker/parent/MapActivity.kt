@@ -3,10 +3,13 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import org.osmdroid.config.Configuration
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -24,6 +27,7 @@ class MapActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val lat = intent?.getDoubleExtra("lat", 0.0) ?: return
             val lon = intent?.getDoubleExtra("lon", 0.0) ?: return
+            if (lat==0.0 && lon==0.0) return
             runOnUiThread {
                 val pos = GeoPoint(lat, lon)
                 marker?.position = pos
@@ -31,34 +35,34 @@ class MapActivity : AppCompatActivity() {
                 map.controller.setZoom(17.0)
                 map.invalidate()
                 val sdf = SimpleDateFormat("HH:mm:ss", Locale.FRANCE)
-                statusText.text = "Position: $lat, $lon - ${sdf.format(Date())}"
-                Toast.makeText(this@MapActivity, "Position reçue !", Toast.LENGTH_SHORT).show()
+                statusText.text = "✅ Position: $lat, $lon - ${sdf.format(Date())}"
             }
         }
     }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        try {
-            val osmConf = Configuration.getInstance()
-            osmConf.userAgentValue = "TrackerParent/1.0"
-            osmConf.osmdroidBasePath = File(cacheDir, "osmdroid")
-            osmConf.osmdroidTileCache = File(cacheDir, "osmdroid/tiles")
-            setContentView(R.layout.activity_map_with_status)
-            map = findViewById(R.id.map)
-            statusText = findViewById(R.id.status)
-            map.setTileSource(TileSourceFactory.MAPNIK)
-            map.setMultiTouchControls(true)
-            map.controller.setZoom(15.0)
-            map.controller.setCenter(GeoPoint(47.4736, -0.5517))
-            marker = Marker(map).apply {
-                position = GeoPoint(47.4736, -0.5517)
-                title = "En attente position..."
+        val osmConf = Configuration.getInstance()
+        osmConf.userAgentValue = "TrackerParent/1.0"
+        osmConf.osmdroidBasePath = File(cacheDir, "osmdroid")
+        osmConf.osmdroidTileCache = File(cacheDir, "osmdroid/tiles")
+        setContentView(R.layout.activity_map)
+        map = findViewById(R.id.map)
+        statusText = findViewById(R.id.status)
+        map.setTileSource(TileSourceFactory.MAPNIK)
+        map.setMultiTouchControls(true)
+        map.controller.setZoom(15.0)
+        map.controller.setCenter(GeoPoint(47.4736, -0.5517))
+        marker = Marker(map).apply { position = GeoPoint(47.4736, -0.5517); title = "Enfant" }
+        map.overlays.add(marker)
+
+        findViewById<FloatingActionButton>(R.id.fabFloat).setOnClickListener {
+            if (!Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "Autorise 'Afficher par-dessus'", Toast.LENGTH_LONG).show()
+                startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+            } else {
+                startForegroundService(Intent(this, FloatingMapService::class.java))
+                Toast.makeText(this, "Carte flottante activée - Tu peux changer d'app", Toast.LENGTH_LONG).show()
             }
-            map.overlays.add(marker)
-            statusText.text = "En attente de SMS Data port 8901..."
-        } catch (e: Exception) {
-            Toast.makeText(this, "Erreur Map: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
     override fun onResume() {
